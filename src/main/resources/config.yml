@@ -1,0 +1,19 @@
+# PlaytimeLimiter settings. Apply changes with /playtime reload.
+
+# Time of day when everyone's used playtime goes back to zero (24h format, HH:mm).
+reset-time: "00:00"
+
+# Timezone for the reset time, e.g. "Europe/Berlin". Leave empty to use the server's timezone.
+timezone: ""
+
+# Extra minutes added to every player's limit on Saturdays and Sundays. 0 turns it off.
+weekend-bonus: 0
+
+# Minutes left at which a limited player gets a warning in chat.
+warn-at: [15, 10, 5, 1]
+
+# Messages use MiniMessage formatting: https://docs.advntr.dev/minimessage/format.html
+# Placeholders: <limit> today's limit, <left> time left, <reset> the reset time.
+messages:
+  kick: "<red>Your daily playtime of <limit> is used up.<newline><gray>Come back after <reset>!"
+  warning: "<yellow>You have <gold><left></gold> of playtime left today."

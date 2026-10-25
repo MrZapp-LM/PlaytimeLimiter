@@ -1,0 +1,9 @@
+name: PlaytimeLimiter
+version: '${version}'
+main: net.playtimelimiter.PlaytimeLimiter
+api-version: '26.3'
+description: Daily playtime limits for individual players
+permissions:
+  playtimelimiter.admin:
+    description: Set and manage playtime limits
+    default: op
