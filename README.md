@@ -1,3 +1,5 @@
+<img src="assets/icon.png" alt="PlaytimeLimiter icon" width="128" align="right">
+
 # PlaytimeLimiter
 
 A small Paper plugin that limits how long individual players can play per day.
