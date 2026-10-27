@@ -21,7 +21,7 @@ import org.bukkit.entity.Player;
 final class PlaytimeCommand implements BasicCommand {
     private static final String ADMIN = "playtimelimiter.admin";
     private static final List<String> SUBCOMMANDS = List.of("set", "remove", "give", "reset", "info", "list", "reload");
-    private static final List<String> UNLIMITED_WORDS = List.of("unlimited", "none", "off");
+    private static final List<String> UNLIMITED_WORDS = List.of("unlimited", "none", "off", "0", "0m", "0h");
     private static final Pattern DURATION = Pattern.compile("(?:(\\d+)h)?(?:(\\d+)m?)?");
 
     private final PlaytimeLimiter plugin;
@@ -179,7 +179,7 @@ final class PlaytimeCommand implements BasicCommand {
     private static void usage(CommandSender sender) {
         sender.sendMessage(mm("""
                 <gold>/playtime</gold> <gray>- show your own playtime
-                <gold>/playtime set <player> <time></gold> <gray>- set an individual limit (90, 2h, 1h30m or unlimited)
+                <gold>/playtime set <player> <time></gold> <gray>- set an individual limit (90, 2h, 1h30m; 0 or unlimited = exempt)
                 <gold>/playtime remove <player></gold> <gray>- remove the individual limit (default applies)
                 <gold>/playtime give <player> <time></gold> <gray>- extra time for today only
                 <gold>/playtime reset <player></gold> <gray>- reset today's used time

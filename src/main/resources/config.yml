@@ -7,7 +7,7 @@ reset-time: "00:00"
 timezone: ""
 
 # Daily limit in minutes for every player without an individual limit. 0 turns it off.
-# Players with their own limit (/playtime set) use that instead; "/playtime set <player> unlimited" exempts someone.
+# Players with their own limit (/playtime set) use that instead; "/playtime set <player> 0" (or "unlimited") exempts someone.
 default-limit: 0
 
 # Extra minutes added to every player's limit on Saturdays and Sundays. 0 turns it off.

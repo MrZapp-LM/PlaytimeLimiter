@@ -23,7 +23,7 @@ Every player can run `/playtime` to see their own time left. `/pt` is an alias.
 | Command | Description |
 |---|---|
 | `/playtime` | Show your own playtime |
-| `/playtime set <player> <time>` | Set an individual limit: `90`, `90m`, `2h`, `1h30m`, or `unlimited` to exempt the player |
+| `/playtime set <player> <time>` | Set an individual limit: `90`, `90m`, `2h`, `1h30m`, or `0` / `unlimited` to exempt the player |
 | `/playtime remove <player>` | Remove the individual limit (the default limit applies again) |
 | `/playtime give <player> <time>` | Extra time for today only |
 | `/playtime reset <player>` | Reset today's used time |
