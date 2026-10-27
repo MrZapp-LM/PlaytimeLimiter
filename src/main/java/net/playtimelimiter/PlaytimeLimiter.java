@@ -56,8 +56,8 @@ public final class PlaytimeLimiter extends JavaPlugin implements Listener {
     private void tick() {
         Settings s = settings;
         for (Player player : getServer().getOnlinePlayers()) {
-            Entry entry = entries.get(player.getUniqueId());
-            if (entry == null) continue;
+            Entry entry = entryFor(player.getUniqueId(), player.getName());
+            if (entry == null || !entry.limited(s)) continue;
             long left = entry.tick(s);
             dirty = true;
             if (left <= 0) {
@@ -71,9 +71,21 @@ public final class PlaytimeLimiter extends JavaPlugin implements Listener {
     @EventHandler
     public void onPreLogin(AsyncPlayerPreLoginEvent event) {
         Entry entry = entries.get(event.getUniqueId());
-        if (entry != null && entry.remainingSeconds(settings) <= 0) {
+        if (entry != null && entry.limited(settings) && entry.remainingSeconds(settings) <= 0) {
             event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, kickMessage(entry));
         }
+    }
+
+    /**
+     * The player's entry, created on the fly while a default limit is active so their time gets tracked.
+     * Null when they have no entry and no default limit applies.
+     */
+    Entry entryFor(UUID uuid, String name) {
+        Entry entry = entries.get(uuid);
+        if (entry == null && settings.defaultLimit() > 0) {
+            entry = entries.computeIfAbsent(uuid, u -> new Entry(name, Entry.DEFAULT, 0, settings.today()));
+        }
+        return entry;
     }
 
     private Component kickMessage(Entry entry) {

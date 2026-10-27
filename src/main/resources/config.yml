@@ -6,6 +6,10 @@ reset-time: "00:00"
 # Timezone for the reset time, e.g. "Europe/Berlin". Leave empty to use the server's timezone.
 timezone: ""
 
+# Daily limit in minutes for every player without an individual limit. 0 turns it off.
+# Players with their own limit (/playtime set) use that instead; "/playtime set <player> unlimited" exempts someone.
+default-limit: 0
+
 # Extra minutes added to every player's limit on Saturdays and Sundays. 0 turns it off.
 weekend-bonus: 0
 

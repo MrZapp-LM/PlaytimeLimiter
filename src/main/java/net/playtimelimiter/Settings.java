@@ -15,6 +15,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 record Settings(
         LocalTime resetTime,
         ZoneId zone,
+        int defaultLimit,
         int weekendBonus,
         List<Long> warnAt,
         String kickMessage,
@@ -42,6 +43,7 @@ record Settings(
         return new Settings(
                 resetTime,
                 zone,
+                Math.max(0, config.getInt("default-limit", 0)),
                 Math.max(0, config.getInt("weekend-bonus", 0)),
                 config.getLongList("warn-at"),
                 config.getString("messages.kick", ""),

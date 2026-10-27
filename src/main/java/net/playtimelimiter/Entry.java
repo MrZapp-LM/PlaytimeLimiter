@@ -2,8 +2,13 @@ package net.playtimelimiter;
 
 import java.time.LocalDate;
 
-/** One limited player: their daily limit and how much of today they have used. */
+/** One tracked player: their limit setting and how much of today they have used. */
 final class Entry {
+    /** limitMinutes value: no individual limit, the config's default-limit applies. */
+    static final int DEFAULT = -1;
+    /** limitMinutes value: exempt from every limit. */
+    static final int UNLIMITED = 0;
+
     String name;
     int limitMinutes;
     long usedSeconds;
@@ -25,10 +30,23 @@ final class Entry {
         }
     }
 
-    /** Today's limit, including any weekend bonus. */
+    synchronized boolean isDefault() {
+        return limitMinutes == DEFAULT;
+    }
+
+    /** The limit in minutes that applies right now: individual, default, or 0 for none. */
+    synchronized int effectiveMinutes(Settings settings) {
+        return limitMinutes == DEFAULT ? settings.defaultLimit() : limitMinutes;
+    }
+
+    synchronized boolean limited(Settings settings) {
+        return effectiveMinutes(settings) > 0;
+    }
+
+    /** Today's limit, including any weekend bonus. Only meaningful when {@link #limited}. */
     synchronized long limitSeconds(Settings settings) {
         rollDay(settings);
-        return settings.limitSeconds(limitMinutes, day);
+        return settings.limitSeconds(effectiveMinutes(settings), day);
     }
 
     synchronized long remainingSeconds(Settings settings) {
@@ -38,6 +56,6 @@ final class Entry {
     synchronized long tick(Settings settings) {
         rollDay(settings);
         usedSeconds++;
-        return settings.limitSeconds(limitMinutes, day) - usedSeconds;
+        return settings.limitSeconds(effectiveMinutes(settings), day) - usedSeconds;
     }
 }

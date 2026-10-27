@@ -21,6 +21,7 @@ import org.bukkit.entity.Player;
 final class PlaytimeCommand implements BasicCommand {
     private static final String ADMIN = "playtimelimiter.admin";
     private static final List<String> SUBCOMMANDS = List.of("set", "remove", "give", "reset", "info", "list", "reload");
+    private static final List<String> UNLIMITED_WORDS = List.of("unlimited", "none", "off");
     private static final Pattern DURATION = Pattern.compile("(?:(\\d+)h)?(?:(\\d+)m?)?");
 
     private final PlaytimeLimiter plugin;
@@ -55,13 +56,15 @@ final class PlaytimeCommand implements BasicCommand {
             sender.sendMessage(mm("<red>Unknown player <white>" + args[1] + "</white> (they need to have joined once)."));
             return;
         }
-        Entry entry = plugin.entries.get(target.uuid);
+        Entry entry = plugin.entryFor(target.uuid, target.name);
 
         switch (sub) {
             case "set" -> {
-                Integer minutes = args.length >= 3 ? parseMinutes(args[2]) : null;
+                Integer minutes = args.length < 3 ? null
+                        : UNLIMITED_WORDS.contains(args[2].toLowerCase(Locale.ROOT)) ? Entry.UNLIMITED
+                        : parseMinutes(args[2]);
                 if (minutes == null) {
-                    sender.sendMessage(mm("<red>Usage: /playtime set <player> <minutes|1h30m>"));
+                    sender.sendMessage(mm("<red>Usage: /playtime set <player> <minutes|1h30m|unlimited>"));
                     return;
                 }
                 if (entry == null) {
@@ -73,16 +76,24 @@ final class PlaytimeCommand implements BasicCommand {
                     }
                 }
                 plugin.save();
-                sender.sendMessage(mm("<green>Daily limit for <white>" + target.name + "</white> set to <gold>"
-                        + format(minutes * 60L) + "</gold>."));
+                sender.sendMessage(mm(minutes == Entry.UNLIMITED
+                        ? "<green><white>" + target.name + "</white> is now exempt from all playtime limits."
+                        : "<green>Daily limit for <white>" + target.name + "</white> set to <gold>"
+                                + format(minutes * 60L) + "</gold>."));
             }
             case "remove" -> {
-                if (plugin.entries.remove(target.uuid) == null) {
-                    sender.sendMessage(mm("<yellow>" + target.name + " has no limit."));
+                if (entry == null || entry.isDefault()) {
+                    sender.sendMessage(mm("<yellow>" + target.name + " has no individual limit."));
                     return;
                 }
+                synchronized (entry) {
+                    entry.limitMinutes = Entry.DEFAULT;
+                }
                 plugin.save();
-                sender.sendMessage(mm("<green>Removed the limit for <white>" + target.name + "</white>."));
+                int def = plugin.settings().defaultLimit();
+                sender.sendMessage(mm("<green>Removed the individual limit for <white>" + target.name + "</white>. "
+                        + (def > 0 ? "The default limit of <gold>" + format(def * 60L) + "</gold> applies now."
+                                : "They can play without a limit.")));
             }
             case "give" -> {
                 Integer minutes = args.length >= 3 ? parseMinutes(args[2]) : null;
@@ -120,8 +131,8 @@ final class PlaytimeCommand implements BasicCommand {
             usage(sender);
             return;
         }
-        Entry entry = plugin.entries.get(player.getUniqueId());
-        if (entry == null) {
+        Entry entry = plugin.entryFor(player.getUniqueId(), player.getName());
+        if (entry == null || !entry.limited(plugin.settings())) {
             player.sendMessage(mm("<green>You have no playtime limit."));
         } else {
             player.sendMessage(status("You", entry));
@@ -130,13 +141,20 @@ final class PlaytimeCommand implements BasicCommand {
     }
 
     private void list(CommandSender sender) {
-        if (plugin.entries.isEmpty()) {
-            sender.sendMessage(mm("<yellow>No players have a playtime limit."));
+        int def = plugin.settings().defaultLimit();
+        sender.sendMessage(mm(def > 0
+                ? "<gold>Default limit: <white>" + format(def * 60L) + "</white> for everyone without an individual limit."
+                : "<gold>Default limit: <gray>off"));
+        List<Entry> individual = plugin.entries.values().stream().filter(e -> !e.isDefault()).toList();
+        if (individual.isEmpty()) {
+            sender.sendMessage(mm("<yellow>No players have an individual limit."));
             return;
         }
-        sender.sendMessage(mm("<gold>Playtime limits:"));
-        for (Entry entry : plugin.entries.values()) {
-            sender.sendMessage(status(entry.name, entry));
+        sender.sendMessage(mm("<gold>Individual limits:"));
+        for (Entry entry : individual) {
+            sender.sendMessage(entry.limited(plugin.settings())
+                    ? status(entry.name, entry)
+                    : mm("<gray>" + entry.name + ": <aqua>unlimited"));
         }
     }
 
@@ -145,11 +163,15 @@ final class PlaytimeCommand implements BasicCommand {
         long left = entry.remainingSeconds(plugin.settings());
         long used = Math.max(0, limit - left);
         return mm("<gray>" + who + ": <white>" + format(used) + "</white> of <white>" + format(limit)
-                + "</white> used today, <" + (left > 0 ? "green" : "red") + ">" + format(left) + " left");
+                + (entry.isDefault() ? "</white> (default)" : "</white>") + " used today, <" + (left > 0 ? "green" : "red") + ">" + format(left) + " left");
     }
 
-    private static boolean noLimit(CommandSender sender, Target target, Entry entry) {
-        if (entry != null) return false;
+    private boolean noLimit(CommandSender sender, Target target, Entry entry) {
+        if (entry != null && entry.limited(plugin.settings())) return false;
+        if (entry != null && entry.limitMinutes == Entry.UNLIMITED) {
+            sender.sendMessage(mm("<aqua>" + target.name + " is exempt from all playtime limits."));
+            return true;
+        }
         sender.sendMessage(mm("<yellow>" + target.name + " has no limit. Set one with /playtime set."));
         return true;
     }
@@ -157,12 +179,12 @@ final class PlaytimeCommand implements BasicCommand {
     private static void usage(CommandSender sender) {
         sender.sendMessage(mm("""
                 <gold>/playtime</gold> <gray>- show your own playtime
-                <gold>/playtime set <player> <time></gold> <gray>- set daily limit (e.g. 90, 90m, 2h, 1h30m)
-                <gold>/playtime remove <player></gold> <gray>- remove the limit
+                <gold>/playtime set <player> <time></gold> <gray>- set an individual limit (90, 2h, 1h30m or unlimited)
+                <gold>/playtime remove <player></gold> <gray>- remove the individual limit (default applies)
                 <gold>/playtime give <player> <time></gold> <gray>- extra time for today only
                 <gold>/playtime reset <player></gold> <gray>- reset today's used time
                 <gold>/playtime info <player></gold> <gray>- show a player's status
-                <gold>/playtime list</gold> <gray>- show all limited players
+                <gold>/playtime list</gold> <gray>- show the default and individual limits
                 <gold>/playtime reload</gold> <gray>- reload config.yml"""));
     }
 
@@ -200,9 +222,10 @@ final class PlaytimeCommand implements BasicCommand {
             if (args[0].equalsIgnoreCase("set")) {
                 Bukkit.getOnlinePlayers().forEach(p -> options.add(p.getName()));
             }
-            plugin.entries.values().forEach(e -> options.add(e.name));
+            plugin.entries.values().stream().filter(e -> !e.isDefault()).forEach(e -> options.add(e.name));
         } else if (args.length == 3 && (args[0].equalsIgnoreCase("set") || args[0].equalsIgnoreCase("give"))) {
             options.addAll(List.of("30m", "1h", "1h30m", "2h", "3h"));
+            if (args[0].equalsIgnoreCase("set")) options.add("unlimited");
         }
         return options.stream().distinct().filter(o -> o.toLowerCase(Locale.ROOT).startsWith(last)).toList();
     }
