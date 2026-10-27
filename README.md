@@ -61,3 +61,7 @@ The jar ends up in `build/libs/`.
 ## License
 
 MIT, see [LICENSE](LICENSE).
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
